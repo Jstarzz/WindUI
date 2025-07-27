@@ -1,8 +1,6 @@
 local KeySystem = {}
 
 
-local HttpService = game:GetService("HttpService")
-
 local Creator = require("../modules/Creator")
 local New = Creator.New
 local Tween = Creator.Tween
@@ -14,7 +12,8 @@ function KeySystem.new(Config, Filename, func)
     local KeyDialogInit = require("./window/Dialog").Init(nil, Config.WindUI.ScreenGui.KeySystem)
     local KeyDialog = KeyDialogInit.Create(true)
     
-    local EnteredKey 
+    
+    local EnteredKey
     
     local ThumbnailSize = 200
     
@@ -84,9 +83,9 @@ function KeySystem.new(Config, Filename, func)
         BackgroundTransparency = 1,
     }, {
         -- New("UIListLayout", {
-        --    Padding = UDim.new(0,9),
-        --    FillDirection = "Horizontal",
-        --    VerticalAlignment = "Bottom"
+        --     Padding = UDim.new(0,9),
+        --     FillDirection = "Horizontal",
+        --     VerticalAlignment = "Bottom"
         -- }),
         IconAndTitleContainer, KeySystemTitle,
     })
@@ -191,12 +190,12 @@ function KeySystem.new(Config, Filename, func)
     })
     
     -- for _, values in next, KeySystemButtons do
-    --    CreateButton(values.Title, values.Icon, values.Callback, values.Variant)
+    --     CreateButton(values.Title, values.Icon, values.Callback, values.Variant)
     -- end
     
     local ExitButton = CreateButton("Exit", "log-out", function()
         KeyDialog:Close()()
-        func(false) -- Call func(false) if the user exits the key system
+        func(false) -- Call func(false) when user exits
     end, "Tertiary", ButtonsContainer.Frame)
     
     if ThumbnailFrame then
@@ -213,32 +212,30 @@ function KeySystem.new(Config, Filename, func)
     end
     
     local SubmitButton = CreateButton("Submit", "arrow-right", function()
-        local KeyToValidate = EnteredKey -- Use the entered key from the input
-        local isKeyValid = false -- Initialize validation status to false
-
+        local Key = EnteredKey
+        local isKey = false
         
+        -- Check if ValidatorFunction exists and use it, otherwise use static key validation
         if typeof(Config.KeySystem.ValidatorFunction) == "function" then
-            print("[KeySystem] Using custom ValidatorFunction for key:", KeyToValidate)
-           
-            local success, validationResult = pcall(Config.KeySystem.ValidatorFunction, KeyToValidate)
-            if success and typeof(validationResult) == "boolean" then
-                isKeyValid = validationResult
+            -- Use custom validation function for dynamic keys
+            local success, result = pcall(Config.KeySystem.ValidatorFunction, Key)
+            if success and typeof(result) == "boolean" then
+                isKey = result
             else
-                warn("[KeySystem] Custom ValidatorFunction did not return a boolean or encountered an error:", validationResult)
-                
+                warn("[KeySystem] ValidatorFunction error or invalid return type:", result)
+                isKey = false
             end
         else
-            
-           
+            -- Use original static key validation
             if type(Config.KeySystem.Key) == "table" then
-                isKeyValid = table.find(Config.KeySystem.Key, tostring(KeyToValidate))
+                isKey = table.find(Config.KeySystem.Key, tostring(Key))
             else
-                isKeyValid = tostring(Config.KeySystem.Key) == tostring(KeyToValidate)
+                isKey = tostring(Config.KeySystem.Key) == tostring(Key)
             end
         end
         
-        if isKeyValid then
-            KeyDialog:Close()() 
+        if isKey then
+            KeyDialog:Close()()
             
             if Config.KeySystem.SaveKey then
                 local folder = Config.Folder or Config.Title
@@ -246,17 +243,15 @@ function KeySystem.new(Config, Filename, func)
                 if not isfolder(folder) then
                     makefolder(folder)
                 end
-                writefile(folder .. "/" .. Filename .. ".key", tostring(KeyToValidate))
+                writefile(folder .. "/" .. Filename .. ".key", tostring(Key))
             end
             
             task.wait(.4)
-            func(true) 
+            func(true)
         else
-                
-            KeyDialog.UIElements.Main.StatusLabel.Text = "Invalid key! Please try again."
-            KeyDialog.UIElements.Main.StatusLabel.TextColor3 = Color3.new(1, 0.2, 0.2)
             
-            func(false) 
+             print("[KeySystem] Invalid key entered:", Key)
+            func(false)
         end
     end, "Primary", ButtonsContainer)
     
@@ -264,15 +259,15 @@ function KeySystem.new(Config, Filename, func)
     SubmitButton.Position = UDim2.new(1,0,0.5,0)
     
     -- TitleContainer:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-    --    KeyDialog.UIElements.Main.Size = UDim2.new(
-    --        0,
-    --        TitleContainer.AbsoluteSize.X +24+24+24+24+9,
-    --        0,
-    --        0
-    --    )
+    --     KeyDialog.UIElements.Main.Size = UDim2.new(
+    --         0,
+    --         TitleContainer.AbsoluteSize.X +24+24+24+24+9,
+    --         0,
+    --         0
+    --     )
     -- end)
     
-    KeyDialog:Open() 
+    KeyDialog:Open()
 end
 
 return KeySystem
