@@ -1,5 +1,9 @@
+-- File: YOUR_FORKED_REPO_PATH/modules/KeySystem.lua
+
 local KeySystem = {}
 
+
+local HttpService = game:GetService("HttpService")
 
 local Creator = require("../modules/Creator")
 local New = Creator.New
@@ -12,8 +16,7 @@ function KeySystem.new(Config, Filename, func)
     local KeyDialogInit = require("./window/Dialog").Init(nil, Config.WindUI.ScreenGui.KeySystem)
     local KeyDialog = KeyDialogInit.Create(true)
     
-    
-    local EnteredKey
+    local EnteredKey 
     
     local ThumbnailSize = 200
     
@@ -83,9 +86,9 @@ function KeySystem.new(Config, Filename, func)
         BackgroundTransparency = 1,
     }, {
         -- New("UIListLayout", {
-        --     Padding = UDim.new(0,9),
-        --     FillDirection = "Horizontal",
-        --     VerticalAlignment = "Bottom"
+        --    Padding = UDim.new(0,9),
+        --    FillDirection = "Horizontal",
+        --    VerticalAlignment = "Bottom"
         -- }),
         IconAndTitleContainer, KeySystemTitle,
     })
@@ -190,11 +193,12 @@ function KeySystem.new(Config, Filename, func)
     })
     
     -- for _, values in next, KeySystemButtons do
-    --     CreateButton(values.Title, values.Icon, values.Callback, values.Variant)
+    --    CreateButton(values.Title, values.Icon, values.Callback, values.Variant)
     -- end
     
     local ExitButton = CreateButton("Exit", "log-out", function()
         KeyDialog:Close()()
+        func(false) -- Call func(false) if the user exits the key system
     end, "Tertiary", ButtonsContainer.Frame)
     
     if ThumbnailFrame then
@@ -211,24 +215,50 @@ function KeySystem.new(Config, Filename, func)
     end
     
     local SubmitButton = CreateButton("Submit", "arrow-right", function()
-        local Key = EnteredKey
-        local isKey
-        if type(Config.KeySystem.Key) == "table" then
-            isKey = table.find(Config.KeySystem.Key, tostring(Key))
+        local KeyToValidate = EnteredKey -- Use the entered key from the input
+        local isKeyValid = false -- Initialize validation status to false
+
+        
+        if typeof(Config.KeySystem.ValidatorFunction) == "function" then
+            print("[KeySystem] Using custom ValidatorFunction for key:", KeyToValidate)
+           
+            local success, validationResult = pcall(Config.KeySystem.ValidatorFunction, KeyToValidate)
+            if success and typeof(validationResult) == "boolean" then
+                isKeyValid = validationResult
+            else
+                warn("[KeySystem] Custom ValidatorFunction did not return a boolean or encountered an error:", validationResult)
+                
+            end
         else
-            isKey = tostring(Config.KeySystem.Key) == tostring(Key)
+            
+           
+            if type(Config.KeySystem.Key) == "table" then
+                isKeyValid = table.find(Config.KeySystem.Key, tostring(KeyToValidate))
+            else
+                isKeyValid = tostring(Config.KeySystem.Key) == tostring(KeyToValidate)
+            end
         end
         
-        if isKey then
-            KeyDialog:Close()()
+        if isKeyValid then
+            KeyDialog:Close()() 
             
             if Config.KeySystem.SaveKey then
                 local folder = Config.Folder or Config.Title
-                writefile(folder .. "/" .. Filename .. ".key", tostring(Key))
+                -- Ensure folder exists before writing
+                if not isfolder(folder) then
+                    makefolder(folder)
+                end
+                writefile(folder .. "/" .. Filename .. ".key", tostring(KeyToValidate))
             end
             
             task.wait(.4)
-            func(true)
+            func(true) 
+        else
+                
+            KeyDialog.UIElements.Main.StatusLabel.Text = "Invalid key! Please try again."
+            KeyDialog.UIElements.Main.StatusLabel.TextColor3 = Color3.new(1, 0.2, 0.2)
+            
+            func(false) 
         end
     end, "Primary", ButtonsContainer)
     
@@ -236,15 +266,15 @@ function KeySystem.new(Config, Filename, func)
     SubmitButton.Position = UDim2.new(1,0,0.5,0)
     
     -- TitleContainer:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-    --     KeyDialog.UIElements.Main.Size = UDim2.new(
-    --         0,
-    --         TitleContainer.AbsoluteSize.X +24+24+24+24+9,
-    --         0,
-    --         0
-    --     )
+    --    KeyDialog.UIElements.Main.Size = UDim2.new(
+    --        0,
+    --        TitleContainer.AbsoluteSize.X +24+24+24+24+9,
+    --        0,
+    --        0
+    --    )
     -- end)
     
-    KeyDialog:Open()
+    KeyDialog:Open() 
 end
 
 return KeySystem
