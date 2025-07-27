@@ -1,5 +1,3 @@
--- File: YOUR_FORKED_REPO_PATH/modules/KeySystem.lua
-
 local KeySystem = {}
 
 
